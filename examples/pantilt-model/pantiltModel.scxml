@@ -1,0 +1,580 @@
+<?xml version="1.0" ?>
+<scxml
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xmlns:wot="http://example.com/wot"
+ xsi:schemaLocation="http://www.w3.org/2005/07/scxml https://www.w3.org/2011/04/SCXML/scxml.xsd"
+ xmlns="http://www.w3.org/2005/07/scxml" version="1.0"
+       initial="servos" datamodel="ecmascript" name="pantilt">
+
+<datamodel>
+    <data id="panPosition" expr="0"/>
+    <data id="tiltPosition" expr="0"/>
+    <data id="panTarget" expr="0"/>
+    <data id="tiltTarget" expr="0"/>
+    <data id="pan_speed" expr="0"/>
+    <data id="tilt_speed" expr="0"/>
+</datamodel>
+
+<parallel id="servos">
+    <state id="panServo">
+        <state id="panIdle">
+            <onentry>
+                <assign location="panTarget" expr="0"/>
+            </onentry>
+
+            <transition event="invokeaction.panTo" target="panToTarget">
+                <assign location="panTarget" expr="event.data.payload"/>
+            </transition>
+
+            <transition event="invokeaction.moveTo" target="panToTarget">
+                <assign location="panTarget" expr="event.data.payload.panAngle"/>
+            </transition>
+
+            <transition event="invokeaction.goHome" target="panToTarget">
+                <assign location="panTarget" expr="0"/>
+            </transition>
+
+            <transition event="invokeaction.panContinuously" cond="event.data.payload !== 0" target="panningContinuously">
+                <assign location="pan_speed" expr="event.data.payload"/>
+                <wot:data cond="panPostion === -90">
+                    {
+                        "description": "The speed at which the platform moves. Negative values for right and positive values for left",
+                        "maximum": 15,
+                        "minimum": 0,
+                        "type": "number",
+                        "unit": "angle per sec"
+                    }
+                </wot:data>
+                <wot:data cond="panPostion === 90">
+                    {
+                        "description": "The speed at which the platform moves. Negative values for right and positive values for left",
+                        "maximum": 0,
+                        "minimum": -15,
+                        "type": "number",
+                        "unit": "angle per sec"
+                    }
+                </wot:data>
+            </transition>
+
+            <transition event="invokeaction.moveContinuously" cond="event.data.payload.panSpeed !== 0" target="panningContinuously">
+                <assign location="pan_speed" expr="event.data.payload.panSpeed"/>
+            </transition>
+        </state>
+
+        <state id="panToTarget">
+            <transition event="simulationStep" target="panToTarget">
+                <if cond="panTarget - panPosition &gt;= 0">
+                    <assign location="panPosition" expr="(panTarget - panPosition) &gt; 6 ? panPosition + 6 : panPosition + (panTarget - panPosition)"/>
+                <else/>
+                    <assign location="panPosition" expr="(panTarget - panPosition) &lt; -6 ? panPosition - 6 : panPosition + (panTarget - panPosition)"/>
+                </if>
+            </transition>
+
+            <transition event="invokeaction.panContinuously" target="panningContinuously">
+                <raise event="notPanning"/>
+            </transition>
+            <transition event="invokeaction.moveContinuously" target="panningContinuously">
+                <raise event="notPanning"/>
+            </transition>
+            <transition cond="panPosition === panTarget" target="panIdle">
+                <raise event="notPanning"/>
+                <send type="WoTIOProcessor" target="Consumer" event="actionDone"/>
+            </transition>
+        </state>
+
+        <state id="panningContinuously">
+            <onentry>
+                <wot:model id="panCon" server="ws://127.0.0.1:8765">
+                    <content>
+                        model panCon
+                            parameter Real speed;
+                            parameter Real startPos;
+                            output Real pos;
+                        initial equation
+                            pos = startPos;
+                        equation
+                            der(pos) = 1.1 * speed;
+                        end panCon;
+                    </content>
+                    <variable name="speed" location="pan_speed"/>
+                    <variable name="startPos" location="panPosition"/>
+                    <variable name="pos" location="panPosition"/>
+                </wot:model>
+            </onentry>
+            
+            <transition event="invokeaction.panTo" target="panToTarget">
+                <assign location="panTarget" expr="event.data.payload"/>
+            </transition>
+
+            <transition event="invokeaction.moveTo" target="panToTarget">
+                <assign location="panTarget" expr="event.data.payload.panAngle"/>
+            </transition>
+
+            <transition event="invokeaction.goHome" target="panToTarget">
+                <assign location="panTarget" expr="0"/>
+            </transition>
+
+            <transition event="invokeaction.stopMovement" target="panIdle">
+                <raise event="notPanning"/>
+            </transition>
+
+            <transition cond="(panPosition &gt;= 90 &amp;&amp; pan_speed &gt; 0) || (panPosition &lt;= -90 &amp;&amp; pan_speed &lt; 0) || pan_speed === 0" target="panIdle">
+                <raise event="notPanning"/>
+            </transition>
+        </state>
+    </state>
+
+    <state id="tiltServo">
+        <state id="tiltIdle">
+            <onentry>
+                <assign location="tiltTarget" expr="0"/>
+            </onentry>
+
+            <transition event="invokeaction.tiltTo" target="tiltToTarget">
+                <assign location="tiltTarget" expr="event.data.payload"/>
+            </transition>
+
+            <transition event="invokeaction.moveTo" target="tiltToTarget">
+                <assign location="tiltTarget" expr="event.data.payload.tiltAngle"/>
+            </transition>
+
+            <transition event="invokeaction.goHome" target="tiltToTarget">
+                <assign location="tiltTarget" expr="0"/>
+            </transition>
+
+            <transition event="invokeaction.tiltContinuously" cond="event.data.payload !== 0" target="tiltingContinuously">
+                <assign location="tilt_speed" expr="event.data.payload"/>
+            </transition>
+
+            <transition event="invokeaction.moveContinuously" cond="event.data.payload.tiltSpeed !== 0" target="tiltingContinuously">
+                <assign location="tilt_speed" expr="event.data.payload.tiltSpeed"/>
+            </transition>
+        </state>
+
+        <state id="tiltToTarget">
+            <transition event="simulationStep" target="tiltToTarget">
+                <if cond="tiltTarget - tiltPosition &gt;= 0">
+                    <assign location="tiltPosition" expr="(tiltTarget - tiltPosition) &gt; 6 ? tiltPosition + 6 : tiltPosition + (tiltTarget - tiltPosition)"/>
+                <else/>
+                    <assign location="tiltPosition" expr="(tiltTarget - tiltPosition) &lt; -6 ? tiltPosition - 6 : tiltPosition + (tiltTarget - tiltPosition)"/>
+                </if>
+            </transition>
+
+            <transition event="invokeaction.tiltContinuously" target="tiltingContinuously">
+                <raise event="notTilting"/>
+            </transition>
+            <transition event="invokeaction.moveContinuously" target="tiltingContinuously">
+                <raise event="notTilting"/>
+            </transition>
+            <transition cond="tiltPosition === tiltTarget" target="tiltIdle">
+                <raise event="notTilting"/>
+                <send type="WoTIOProcessor" target="Consumer" event="actionDone"/>
+            </transition>
+        </state>
+
+        <state id="tiltingContinuously">
+            <onentry>
+                <wot:model id="tiltCon" server="ws://127.0.0.1:8765">
+                    <content>
+                        model tiltCon
+                            parameter Real speed;
+                            parameter Real startPos;
+                            output Real pos;
+                        initial equation
+                            pos = startPos;
+                        equation
+                            der(pos) = 1.1 * speed;
+                        end tiltCon;
+                    </content>
+                    <variable name="speed" location="tilt_speed"/>
+                    <variable name="startPos" location="tiltPosition"/>
+                    <variable name="pos" location="tiltPosition"/>
+                </wot:model>
+            </onentry>
+            
+            <transition event="invokeaction.tiltTo" target="tiltToTarget">
+                <assign location="tiltTarget" expr="event.data.payload"/>
+            </transition>
+
+            <transition event="invokeaction.moveTo" target="tiltToTarget">
+                <assign location="tiltTarget" expr="event.data.payload.tiltAngle"/>
+            </transition>
+
+            <transition event="invokeaction.goHome" target="tiltToTarget">
+                <assign location="tiltTarget" expr="0"/>
+            </transition>
+
+            <transition event="invokeaction.stopMovement" target="tiltIdle">
+                <raise event="notTilting"/>
+            </transition>
+
+            <transition cond="(tiltPosition &gt;= 80 &amp;&amp; tilt_speed &gt; 0) || (tiltPosition &lt;= -80 &amp;&amp; tilt_speed &lt; 0) || tilt_speed === 0" target="tiltIdle">
+                <raise event="notTilting"/>
+            </transition>
+        </state>
+    </state>
+</parallel>
+
+<wot:affordances>
+    <wot:event name="actionDone" emitEvent="actionDone">
+        <content>
+            {
+                "description": "Event that fires when the last action is done"
+            }
+        </content>
+    </wot:event>
+    <wot:property name="panPosition" dataElement="panPosition">
+        <content>
+            {
+                "description": "The current position of the pan platform in degrees",
+                "maximum": 90,
+                "minimum": -90,
+                "observable": true,
+                "readOnly": true,
+                "title": "Pan Position",
+                "type": "number",
+                "unit": "degrees",
+                "writeOnly": false
+            }
+        </content>
+    </wot:property>
+    <wot:property name="tiltPosition" dataElement="tiltPosition">
+        <content>
+            {
+                "description": "The current position of the pan platform in degrees",
+                "maximum": 80,
+                "minimum": -80,
+                "observable": true,
+                "readOnly": true,
+                "title": "Tilt Position",
+                "type": "number",
+                "unit": "degrees",
+                "writeOnly": false
+            }
+        </content>
+    </wot:property>
+    <wot:property name="panState" stateElement="panServo"/>
+    <wot:property name="tiltState" stateElement="tiltServo"/>
+    <wot:action name="tiltTo">
+        <content>
+            {
+                "description": "Moves the tilt and pan platform with the speeds given in input until a stop action is invoked or limits are reached",
+                "synchronous": false,
+                "input": {
+                    "maximum": 80,
+                    "minimum": -80,
+                    "type": "number",
+                    "unit": "degrees"
+                },
+                "idempotent": false,
+                "safe": false,
+                "title": "Tilt To"
+              }
+        </content>
+        <wot:op type="invokeaction" event="invokeaction.tiltTo" responseEvent ="response.invokeaction.tiltTo">
+            <content>
+                {
+                    "description": "Moves the tilt and pan platform with the speeds given in input until a stop action is invoked or limits are reached",
+                    "synchronous": false,
+                    "input": {
+                        "maximum": 80,
+                        "minimum": -80,
+                        "type": "number",
+                        "unit": "degrees"
+                    },
+                    "idempotent": false,
+                    "safe": false,
+                    "title": "Tilt To"
+                  }
+            </content>
+        </wot:op>
+    </wot:action>
+    <wot:action name="panTo">
+        <content>
+            {
+                "description": "Moves the pan platform to the angle specific in the input",
+                "synchronous": false,
+                "idempotent": false,
+                "input": {
+                  "maximum": 90,
+                  "minimum": -90,
+                  "type": "number",
+                  "unit": "degrees"
+                },
+                "safe": false,
+                "title": "Pan To"
+              }
+        </content>
+        <wot:op type="invokeaction" event="invokeaction.panTo" responseEvent ="response.invokeaction.panTo">
+            <content>
+                {
+                    "description": "Moves the pan platform to the angle specific in the input",
+                    "synchronous": false,
+                    "idempotent": false,
+                    "input": {
+                      "maximum": 90,
+                      "minimum": -90,
+                      "type": "number",
+                      "unit": "degrees"
+                    },
+                    "safe": false,
+                    "title": "Pan To"
+                  }
+            </content>
+        </wot:op>
+    </wot:action>
+    <wot:action name="moveTo">
+        <content>
+            {
+                "description": "Moves the tilt and pan platform to the angles given in input",
+                "idempotent": false,
+                "synchronous": false,
+                "input": {
+                  "properties": {
+                    "panAngle": {
+                      "maximum": 90,
+                      "minimum": -90,
+                      "title": "Pan To",
+                      "type": "number",
+                      "unit": "degrees"
+                    },
+                    "tiltAngle": {
+                      "maximum": 80,
+                      "minimum": -80,
+                      "title": "Tilt To",
+                      "type": "number",
+                      "unit": "degrees"
+                    }
+                  },
+                  "required": [
+                    "panAngle",
+                    "tiltAngle"
+                  ],
+                  "type": "object"
+                },
+                "safe": false,
+                "title": "Move To"
+              }
+        </content>
+        <wot:op type="invokeaction" event="invokeaction.moveTo">
+            <content>
+                {
+                    "description": "Moves the tilt and pan platform to the angles given in input",
+                    "idempotent": false,
+                    "synchronous": false,
+                    "input": {
+                      "properties": {
+                        "panAngle": {
+                          "maximum": 90,
+                          "minimum": -90,
+                          "title": "Pan To",
+                          "type": "number",
+                          "unit": "degrees"
+                        },
+                        "tiltAngle": {
+                          "maximum": 80,
+                          "minimum": -80,
+                          "title": "Tilt To",
+                          "type": "number",
+                          "unit": "degrees"
+                        }
+                      },
+                      "required": [
+                        "panAngle",
+                        "tiltAngle"
+                      ],
+                      "type": "object"
+                    },
+                    "safe": false,
+                    "title": "Move To"
+                  }
+            </content>
+        </wot:op>
+    </wot:action>
+    <wot:action name="tiltContinuously">
+        <content>
+            {
+                "description": "Moves the tilt platform with speed given in input until a stop action is invoked or limits are reached",
+                "idempotent": false,
+                "synchronous": false,
+                "input": {
+                  "description": "The speed at which the platform moves. Negative values for moving up and positive values for moving down",
+                  "maximum": 15,
+                  "minimum": -15,
+                  "type": "number",
+                  "unit": "angle per sec"
+                },
+                "safe": false,
+                "title": "Tilt Continuously"
+            }
+        </content>
+        <wot:op type="invokeaction" event="invokeaction.tiltContinuously">
+            <content>
+                {
+                    "description": "Moves the tilt platform with speed given in input until a stop action is invoked or limits are reached",
+                    "idempotent": false,
+                    "synchronous": false,
+                    "input": {
+                      "description": "The speed at which the platform moves. Negative values for moving up and positive values for moving down",
+                      "maximum": 15,
+                      "minimum": -15,
+                      "type": "number",
+                      "unit": "angle per sec"
+                    },
+                    "safe": false,
+                    "title": "Tilt Continuously"
+                }
+            </content>
+        </wot:op>
+    </wot:action>
+    <wot:action name="panContinuously">
+        <content>
+            {
+                "description": "Moves the pan platform with speed given in input until a stop action is invoked or limits are reached",
+                "idempotent": false,
+                "synchronous": false,
+                "input": {
+                  "description": "The speed at which the platform moves. Negative values for right and positive values for left",
+                  "maximum": 15,
+                  "minimum": -15,
+                  "type": "number",
+                  "unit": "angle per sec"
+                },
+                "safe": false,
+                "title": "Pan Continuously"
+            }
+        </content>
+        <wot:op type="invokeaction" event="invokeaction.panContinuously">
+            <content>
+                {
+                    "description": "Moves the pan platform with speed given in input until a stop action is invoked or limits are reached",
+                    "idempotent": false,
+                    "synchronous": false
+                    "input": {
+                      "description": "The speed at which the platform moves. Negative values for right and positive values for left",
+                      "maximum": 15,
+                      "minimum": -15,
+                      "type": "number",
+                      "unit": "angle per sec"
+                    },
+                    "safe": false,
+                    "title": "Pan Continuously"
+                }
+            </content>
+        </wot:op>
+    </wot:action>
+    <wot:action name="moveContinuously">
+        <content>
+            {
+                "description": "Moves the tilt and pan platform with the speeds given in input until a stop action is invoked or limits are reached",
+                "idempotent": false,
+                "synchronous": false,
+                "input": {
+                  "properties": {
+                    "panSpeed": {
+                      "description": "The speed at which the platform moves. Negative values for right and positive values for left",
+                      "maximum": 15,
+                      "minimum": -15,
+                      "type": "number",
+                      "unit": "angle per sec"
+                    },
+                    "tiltSpeed": {
+                      "description": "The speed at which the tilt platform moves. Negative values for moving up and positive values for moving down",
+                      "maximum": 15,
+                      "minimum": -15,
+                      "type": "number",
+                      "unit": "angle per sec"
+                    }
+                  },
+                  "required": [
+                    "panSpeed",
+                    "tiltSpeed"
+                  ],
+                  "type": "object"
+                },
+                "safe": false,
+                "title": "Move Continuously"
+              }
+        </content>
+        <wot:op type="invokeaction" event="invokeaction.moveContinuously">
+            <content>
+                {
+                    "description": "Moves the tilt and pan platform with the speeds given in input until a stop action is invoked or limits are reached",
+                    "idempotent": false,
+                    "synchronous": false,
+                    "input": {
+                      "properties": {
+                        "panSpeed": {
+                          "description": "The speed at which the platform moves. Negative values for right and positive values for left",
+                          "maximum": 15,
+                          "minimum": -15,
+                          "type": "number",
+                          "unit": "angle per sec"
+                        },
+                        "tiltSpeed": {
+                          "description": "The speed at which the tilt platform moves. Negative values for moving up and positive values for moving down",
+                          "maximum": 15,
+                          "minimum": -15,
+                          "type": "number",
+                          "unit": "angle per sec"
+                        }
+                      },
+                      "required": [
+                        "panSpeed",
+                        "tiltSpeed"
+                      ],
+                      "type": "object"
+                    },
+                    "safe": false,
+                    "title": "Move Continuously"
+                  }
+            </content>
+        </wot:op>
+    </wot:action>
+    <wot:action name="goHome">
+        <content>
+            {
+                "description": "Returns the pan and tilt to their home position which is at 0 and 0 degrees",
+                "idempotent": false,
+                "synchronous": false,
+                "safe": false,
+                "title": "Go Home"
+            }
+        </content>
+        <wot:op type="invokeaction" event="invokeaction.goHome">
+            <content>
+                {
+                    "description": "Returns the pan and tilt to their home position which is at 0 and 0 degrees",
+                    "idempotent": false,
+                    "synchronous": false,
+                    "safe": false,
+                    "title": "Go Home"
+                }
+            </content>
+        </wot:op>
+    </wot:action>
+    <wot:action name="stopMovement">
+        <content>
+            {
+                "description": "Stops any movement that was created with continuous movement calls",
+                "idempotent": false,
+                "synchronous": false,
+                "safe": false,
+                "title": "Stop Movement"
+            }
+        </content>
+        <wot:op type="invokeaction" event="invokeaction.stopMovement">
+            <content>
+                {
+                    "description": "Stops any movement that was created with continuous movement calls",
+                    "idempotent": false,
+                    "synchronous": false,
+                    "safe": false,
+                    "title": "Stop Movement"
+                }
+            </content>
+        </wot:op>
+    </wot:action>
+</wot:affordances>
+
+</scxml>

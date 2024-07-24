@@ -1,0 +1,226 @@
+<?xml version="1.0"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml"
+       xmlns:wot="http://example.com/wot"
+       name="altivar320"
+       version="1.0"
+       datamodel="ecmascript"
+       initial="drive">
+       <datamodel>
+        <data id="powerAbsent" expr="true"/>
+        <data id="statusDisplay" expr="&quot;&quot;"/>
+        <data id="quickStopCode" expr="2"/>
+       </datamodel>
+
+       <state id="drive" initial="1">
+        <state id="1">
+        <!-- Not ready to switch on -->
+              <transition target="2"/>
+        </state>
+
+        <state id="2">
+        <!-- Switch on disabled -->
+            <onentry>
+                  <assign location="statusDisplay" expr="'NST'"/>
+                  <if cond="event.id === 'invokeaction.disablevoltage'">
+                        <send type="WoTIOProcessor" event="disablevoltage.done"/>
+                  <elseif cond="event.id === 'invokeaction.quickstop'"/>
+                        <send type="WoTIOProcessor" event="quickstop.done"/>
+                  <elseif cond="event.id === 'invokeaction.faultreset'"/>
+                        <send type="WoTIOProcessor" event="faultreset.done"/>
+                  </if>
+            </onentry>
+            <transition event="invokeaction.shutdown" target="3"/>
+        </state>
+
+        <state id="3">
+        <!-- Ready to switch on -->
+            <onentry>
+                  <if cond="powerAbsent === false">
+                        <assign location="statusDisplay" expr="'NLP'"/>
+                  <else/>
+                        <assign location="statusDisplay" expr="'RDY'"/>
+                  </if>
+
+                  <if cond="event.id === 'invokeaction.shutdown'">
+                        <send type="WoTIOProcessor" event="shutdown.done"/>
+                  </if>
+            </onentry>
+            <transition event="invokeaction.disablevoltage" target="2"/>
+            <transition event="invokeaction.quickstop" target="2"/>
+            <transition event="stopkeypressed" target="2"/>
+            <transition event="invokeaction.switchon" target="4">
+                  <assign location="statusDisplay" expr="'RDY'"/>
+            </transition>
+        </state>
+
+        <state id="4">
+            <onentry>
+                  <assign location="statusDisplay" expr="'RDY'"/>
+                  <if cond="event.id === 'invokeaction.switchon'">
+                        <send type="WoTIOProcessor" event="switchon.done"/>
+                  <elseif cond="event.id === 'invokeaction.disableoperation'"/>
+                        <send type="WoTIOProcessor" event="disableoperation.done"/>
+                  </if>
+            </onentry>
+        <!-- Switched on -->
+            <transition event="invokeaction.enableoperation" target="5"/>
+            <transition event="invokeaction.shutdown" target="3"/>
+            <transition event="stopkeypressed" target="3"/>
+            <transition event="invokeaction.disablevoltage" target="2"/>
+            <transition event="invokeaction.quickstop" target="2"/>
+            <transition event="stopkeypressed" target="2"/>
+        </state>
+
+        <state id="5">
+            <onentry>
+                  <assign location="statusDisplay" expr="'RUN'"/>
+                  <if cond="event.id === 'invokeaction.enableoperation'">
+                        <send type="WoTIOProcessor" event="enableoperation.done"/>
+                  </if>
+            </onentry>
+        <!-- Operation enabled -->
+            <transition event="invokeaction.disableoperation" target="4"/>
+            <transition event="faststop" target="4">
+                  <assign location="statusDisplay" expr="'FST'"/>
+            </transition>
+            <transition event="invokeaction.shutdown" target="3"/>
+            <transition event="invokeaction.disablevoltage" target="2"/>
+            <transition event="freewheelstop" target="2"/>
+            <transition event="stopkeypressed" target="2"/>
+            <transition event="sto" target="2"/>
+            <transition event="invokeaction.quickstop" target="6"/>
+              
+        </state>
+
+        <state id="6">
+            <onentry>
+                  <assign location="statusDisplay" expr="'FST'"/>
+                  <if cond="event.id === 'invokeaction.quickstop'">
+                        <send type="WoTIOProcessor" event="quickstop.done"/>
+                  </if>
+            </onentry>
+        <!-- Quick stop active -->
+            <transition cond="quickStopCode === 2" target="2"/>
+            <transition event="invokeaction.disablevoltage" cond="quickStopCode === 6" target="2"/>
+            <transition event="stopkeypressed" target="2"/>
+        </state>
+
+        <transition event="fault" target="fault">
+        </transition>
+       </state>
+
+       <state id="fault">
+        <state id="7">
+            <!-- Fault reaction active -->
+            <transition target="8"/>
+        </state>
+
+        <state id="8">
+            <!-- Fault -->
+            <onentry>
+                  <send type="WoTIOProcessor" event="fault"/>
+            </onentry>
+            <transition event="invokeaction.faultreset" target="2"/>
+        </state>
+       </state>
+
+       <wot:affordances>
+            <wot:property name="driveStatus" stateElement="drive">
+                  <content>
+                       { 
+                        "description": "States are:\n1 - Not ready to switch on\n2 - Switch on disabled\n3 - Ready to switch on\n4 - Switched on\n5 - Operation enabled\n6 - Quick stop active\n7 - Fault reaction active\n8 - Fault",
+                        "readonly": true,
+                        "observable": true
+                        }
+                  </content>
+            </wot:property>
+            <wot:property name="statusDisplay" dataElement="statusDisplay">
+                  <content>
+                        {
+                              "type": "string",
+                              "readonly": true,
+                              "writeonly": false
+                        }
+                  </content>
+            </wot:property>
+            <wot:property name="powerStatus" dataElement="powerAbsent">
+                  <content>
+                        {
+                        "type": "boolean",
+                        "readonly": false,
+                        "writeonly": false
+                        }
+                  </content>
+            </wot:property>
+            <wot:property name="quickStopCode" dataElement="quickStopCode">
+                  <content>
+                        {
+                        "type": "number",
+                        "readonly": false,
+                        "writeonly": false
+                        }
+                  </content>
+            </wot:property>
+            <wot:action name="shutdown" event="invokeaction.shutdown">
+                  <content>
+                        {
+                              "description": "Shutdown"
+                        }
+                  </content>
+            </wot:action>
+            <wot:action name="switchOn" event="invokeaction.switchon">
+                  <content>
+                        {
+                              "description": "Switch on"
+                        }
+                  </content>
+            </wot:action>
+            <wot:action name="enableOperation">
+                  <content>
+                        {
+                              "description": "Enable operation"
+                        }
+                  </content>
+                  <wot:op type="invokeaction" event="invokeaction.enableoperation" responseEvent="enableoperation.done"/>
+            </wot:action>
+            <wot:action name="disableOperation" event="invokeaction.disableoperation">
+                  <content>
+                        {
+                              "description": "Disable operation"
+                        }
+                  </content>
+                  <wot:op type="invokeaction" event="invokeaction.disableoperation" responseEvent="disableoperation.done"/>
+            </wot:action>
+            <wot:action name="disableVoltage" event="invokeaction.disablevoltage">
+                  <content>
+                        {
+                              "description": "Disable voltage"
+                        }
+                  </content>
+                  <wot:op type="invokeaction" event="invokeaction.disablevoltage" responseEvent="disablevoltage.done"/>
+            </wot:action>
+            <wot:action name="quickStop" event="invokeaction.quickstop">
+                  <content>
+                        {
+                              "description": "Quick stop"
+                        }
+                  </content>
+                  <wot:op type="invokeaction" event="invokeaction.quickstop" responseEvent="quickstop.done"/>
+            </wot:action>
+            <wot:action name="faultReset" event="invokeaction.faultreset">
+                  <content>
+                        {
+                              "description": "Shutdown"
+                        }
+                  </content>
+                  <wot:op type="invokeaction" event="invokeaction.faultreset" responseEvent="faultreset.done"/>
+            </wot:action>
+            <wot:event name="fault" emitEvent="fault">
+                  <content>
+                        {
+                              "description": "Fault raised"
+                        }
+                  </content>
+            </wot:event>
+       </wot:affordances>
+</scxml>

@@ -1,0 +1,128 @@
+<?xml version="1.0"?>
+<scxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.w3.org/2005/07/scxml https://www.w3.org/2011/04/SCXML/scxml.xsd" xmlns="http://www.w3.org/2005/07/scxml" version="1.0"
+    initial="wrapper" datamodel="ecmascript" name="coffeeMachine">
+    <datamodel>
+        <data id="queue" expr="[]" />
+        <data id="queueLevel" expr="0" />
+        <data id="queueSize" expr="5" />
+        <data id="internalTaskRef" expr="null" />
+        <data id="outlet1_task"/>
+    </datamodel>
+    <parallel id="wrapper">
+        <state id="taskQueue">
+            <state id="empty">
+                <transition event="enqueue" target="halfFull">
+                    <assign location="queue" expr="[event.data.task, ...queue]"/>
+                    <assign location="queueLevel" expr="queueLevel+1"/>
+                </transition>
+            </state>
+            <state id="halfFull">
+                <transition event="enqueue" cond="queueLevel &lt; queueSize-1 " target="halfFull">
+                    <assign location="queue" expr="[event.data.task, ...queue]"/>
+                    <assign location="queueLevel" expr="queueLevel+1"/>
+                </transition>
+
+                <transition event="enqueue" cond="queueLevel &gt;= queueSize-1" target="full">
+                    <assign location="queue" expr="[event.data.task, ...queue]"/>
+                    <assign location="queueLevel" expr="queueLevel+1"/>
+                </transition>
+
+                <transition event="dequeue" cond="queueLevel &gt; 1" target="halfFull">
+                    <assign location="internalTaskRef" expr="queue[queue.length-1]"/>
+                    <assign location="queue" expr="[...queue.slice(0,-1)]"/>
+                    <assign location="queueLevel" expr="queueLevel-1"/>
+                    <send event="taskDequed">
+                        <param name="id" expr="event.data.id"/>
+                        <param name="task" expr="internalTaskRef"/>
+                    </send>
+                </transition>
+
+                <transition event="dequeue" cond="queueLevel &lt;= 1" target="empty">
+                    <assign location="internalTaskRef" expr="queue[queue.length-1]"/>
+                    <assign location="queue" expr="[...queue.slice(0,-1)]"/>
+                    <assign location="queueLevel" expr="queueLevel-1"/>
+                    <send event="taskDequed">
+                        <param name="id" expr="event.data.id"/>
+                        <param name="task" expr="internalTaskRef"/>
+                    </send>        
+                </transition>
+            </state>
+            <state id="full">
+                <transition event="dequeue" target="halfFull">
+                    <assign location="internalTaskRef" expr="queue[queue.length-1]"/>
+                    <assign location="queue" expr="[...queue.slice(0,-1)]"/>
+                    <assign location="queueLevel" expr="queueLevel-1"/>
+                    <send event="taskDequed">
+                        <param name="id" expr="event.data.id"/>
+                        <param name="task" expr="internalTaskRef"/>
+                    </send>
+                    
+                </transition>
+            </state>
+        </state>
+
+        <state id="coffeeOutlet1">
+            <state id="coffeeOutlet1_idle">
+                <onentry>
+                    <if cond="queueLevel &gt;= 1">
+                        <send event="dequeue">
+                            <param name="id" expr="'coffeeOutlet1'"/>
+                        </send>
+                    </if>
+                </onentry>
+                <transition event="enqueue" target="coffeeOutlet1_idle"/>
+                <transition event="taskDequed" target="coffeeOutlet1_brewing" cond="event.data.id ==='coffeeOutlet1'"/>
+            </state>
+
+            <state id="coffeeOutlet1_brewing">
+                <invoke id="task1">
+                    <param name="coffeeToBrew" expr="event.data.task"/>
+                    <content>
+                        <scxml version="1.0" name="brewingTask" datamodel="ecmascript" initial="filling">
+                            <datamodel>
+                                <data id="fillingTimes">
+                                    {
+                                        "cappucino": "30s",
+                                        "espresso": "10s"
+                                    }
+                                </data>
+                                <data id="brewingTimes">
+                                    {
+                                        "cappucino": "120s",
+                                        "espresso": "180s"
+                                    }
+                                </data>
+                                <data id="coffeeToBrew"/>
+                            </datamodel>
+                            <state id="filling">
+                                <onentry>
+                                    <if cond="coffeeToBrew !== undefined">
+                                        <send event="filled" delayexpr="fillingTimes[coffeeToBrew]"/>
+                                    </if>
+                                </onentry>
+                                <transition event="filled" target="brewing"/>
+                            </state>
+                            <state id="brewing">
+                                <onentry>
+                                    <send event="brewed" delayexpr="brewingTimes[coffeeToBrew]"/>
+                                </onentry>
+                                <transition event="brewed" target="pouring"/>
+                            </state>
+                            <state id="pouring">
+                                <onentry>
+                                    <send event="poured" delay="10s"/>
+                                </onentry>
+                                <transition event="poured" target="finished"/>
+                            </state>
+                            <final id="finished">
+                                
+                            </final>
+                        </scxml>
+                    </content>
+                </invoke>
+                <transition event= "*" cond="event.type.includes('done.invoke')" target="coffeeOutlet1_idle"></transition>
+            </state>
+        </state>
+    </parallel>
+</scxml>

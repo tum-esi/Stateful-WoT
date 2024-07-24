@@ -1,0 +1,457 @@
+<?xml version="1.0"?>
+<scxml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xmlns:wot="http://example.com/wot"
+ xsi:schemaLocation="http://www.w3.org/2005/07/scxml https://www.w3.org/2011/04/SCXML/scxml.xsd" xmlns="http://www.w3.org/2005/07/scxml" version="1.0"
+    initial="wrapper" datamodel="ecmascript" name="coffeeMachine">
+    <datamodel>
+        <data id="allAvailableResources">
+            {
+                "milk": 100,
+                "water": 100,
+                "chocolate": 100,
+                "coffeeBeans": 100
+            }
+        </data>
+        <data id="possibleDrinks" expr="[&quot;espresso&quot;, &quot;americano&quot;, &quot;cappuccino&quot;, &quot;latte&quot;, &quot;hotChocolate&quot;, &quot;hotWater&quot;]"></data>
+        <data id="servedCounter" expr="0"></data>
+        <data id="maintenanceNeeded" expr="false"></data>
+        <data id="currentTask"/>
+        <data id="schedules" expr="[]"></data>
+    </datamodel>
+    <parallel id="wrapper">
+        <state id="resourceUpdate">
+            <transition event="*" cond="event.type.includes('update') &amp;&amp; event.type.endsWith('coffeeBeans')" target="resourceUpdate">
+                <assign location="allAvailableResources.coffeeBeans" expr="allAvailableResources.coffeeBeans - event.data.payload"/>
+            </transition>
+            <transition event="*" cond="event.type.includes('update') &amp;&amp; event.type.endsWith('water')" target="resourceUpdate">
+                <assign location="allAvailableResources.water" expr="allAvailableResources.water - event.data.payload"/>
+            </transition>
+            <transition event="*" cond="event.type.includes('update') &amp;&amp; event.type.endsWith('milk')" target="resourceUpdate">
+                <assign location="allAvailableResources.milk" expr="allAvailableResources.milk - event.data.payload"/>
+            </transition>
+            <transition event="*" cond="event.type.includes('update') &amp;&amp; event.type.endsWith('chocolate')" target="resourceUpdate">
+                <assign location="allAvailableResources.chocolate" expr="allAvailableResources.chocolate - event.data.payload"/>
+            </transition>
+        </state>
+        <state id="eventEmitter">
+            <transition event="outOfResource" target="eventEmitter">
+                <send type="WoTIOProcessor" event="outOfResource">
+                    <content expr="event.data"/>
+                </send>
+            </transition>
+            <transition event= "*" cond="event.type.includes('done.invoke')" target="eventEmitter">
+                <send type="WoTIOProcessor" event="taskDone"/>
+            </transition>
+        </state>
+        <state id="coffeeOutlet">
+            <state id="idle">
+                <transition event="taskReceived" target="busy"/>
+                <transition event="refill" target="refilling"/>
+            </state>
+
+            <state id="busy">
+                <invoke idlocation="currentTask">
+                    <param name="coffeeTask" expr="event.data.payload"/>
+                    <param name="currentMilk" expr="allAvailableResources.milk"/>
+                    <param name="currentWater" expr="allAvailableResources.water"/>
+                    <param name="currentChocolate" expr="allAvailableResources.chocolate"/>
+                    <param name="currentCoffeeBeans" expr="allAvailableResources.coffeeBeans"/>
+                    <content>
+                        <scxml version="1.0" name="brewingTask" datamodel="ecmascript" initial="init">
+                            <datamodel>
+                                <data id="def">
+                                    {
+                                     "drinkId": "americano",
+                                     "size": "m",
+                                     "quantity": 1
+                                    }
+                                </data>
+                                <data id="remainingQuantity" expr="1"/>
+                                <data id="sizeQuantifiers">
+                                    { "s": 1, "m": 2, "l": 3 }
+                                </data>
+                                <data id="drinkRecipes">
+                                    {
+                                        "espresso": {
+                                            "water": 1,
+                                            "milk": 0,
+                                            "chocolate": 0,
+                                            "coffeeBeans": 2
+                                        },
+                                        "americano": {
+                                            "water": 2,
+                                            "milk": 0,
+                                            "chocolate": 0,
+                                            "coffeeBeans": 2
+                                        },
+                                        "cappuccino": {
+                                            "water": 1,
+                                            "milk": 1,
+                                            "chocolate": 0,
+                                            "coffeeBeans": 2
+                                        },
+                                        "latte": {
+                                            "water": 1,
+                                            "milk": 2,
+                                            "chocolate": 0,
+                                            "coffeeBeans": 2
+                                        },
+                                        "hotChocolate": {
+                                            "water": 1,
+                                            "milk": 0,
+                                            "chocolate": 1,
+                                            "coffeeBeans": 0
+                                        },
+                                        "hotWater": {
+                                            "water": 1,
+                                            "milk": 0,
+                                            "chocolate": 0,
+                                            "coffeeBeans": 0
+                                        }
+                                    }
+                                </data>
+                                <data id="grindingTimes">
+                                    {
+                                        "l": "10s",
+                                        "m": "8s",
+                                        "s": "5s"
+                                    }
+                                </data>
+                                <data id="pouringTimes">
+                                    {
+                                        "l": "4s",
+                                        "m": "3s",
+                                        "s": "2s"
+                                    }
+                                </data>
+                                <data id="brewingTimes">
+                                    {
+                                        "espresso": "60s", 
+                                        "americano": "60s", 
+                                        "cappuccino": "60s", 
+                                        "latte": "60s"
+                                    }
+                                </data>
+                                <data id="heatingTime">
+                                    {
+                                        "s": "5s",
+                                        "m": "7s",
+                                        "l": "10s"
+                                    }
+                                </data>
+                                <data id="currentMilk"/>
+                                <data id="currentWater"/>
+                                <data id="currentChocolate"/>
+                                <data id="currentCoffeeBeans"/>
+                                <data id="coffeeTask"/>                            
+                            </datamodel>
+                            <state id="init">
+                                <onentry>
+                                    <if cond="coffeeTask === undefined">
+                                        <assign location="coffeeTask" expr="def"/>
+                                        <else/>
+                                            <if cond="coffeeTask.drinkId === undefined">
+                                                <assign location="coffeeTask.drinkId" expr="def.drinkId"/>
+                                            </if>
+                                            <if cond="coffeeTask.size === undefined">
+                                                <assign location="coffeeTask.size" expr="def.size"/>
+                                            </if>
+                                            <if cond="coffeeTask.quantity === undefined">
+                                                <assign location="coffeeTask.quantity" expr="def.quantity"/>
+                                            </if>
+                                    </if>
+                                </onentry>
+                                <transition target="checking"/>
+                                <onexit>
+                                    <assign location="remainingQuantity" expr="coffeeTask.quantity"/>
+                                </onexit>
+                            </state>
+                            <state id="checking">
+                                <onentry>
+                                    <if cond="currentCoffeeBeans - (sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].coffeeBeans) &lt; 0">
+                                        <send event="outOfResource">
+                                            <content>
+                                                "'coffeeBeans'"
+                                            </content>
+                                        </send>
+                                        <elseif cond="currentMilk - (sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].milk) &lt; 0"/>
+                                        <send event="outOfResource">
+                                            <content>
+                                                "'milk'"
+                                            </content>
+                                        </send>
+                                        <elseif cond="currentWater - (sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].water) &lt; 0"/>
+                                        <send event="outOfResource">
+                                            <content>
+                                                "'water'"
+                                            </content>
+                                        </send>
+                                        <elseif cond="currentChocolate - (sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].chocolate) &lt; 0"/>
+                                        <send event="outOfResource">
+                                            <content>
+                                                "'chocolate'"
+                                            </content>
+                                        </send>
+                                        <else/>
+                                        <send event="sendResourcesOK"/>
+                                    </if>
+                                </onentry>
+                                <transition event="outOfResource" target="outOfResource"/>
+                                <transition event="sendResourcesOK" target="checkOk"/>
+                            </state>
+                            <state id="checkOk">
+                                <transition target="heatingWater" cond="(coffeeTask.drinkId === 'hotWater' || coffeeTask.drinkId === 'hotChocolate')"/>
+                                <transition target="grinding" cond="coffeeTask.drinkId !== 'hotWater' &amp;&amp; coffeeTask.drinkId !== 'hotChocolate'"/>
+                            </state>
+                            <final id="outOfResource">
+                                <onentry>
+                                    <if cond="event.data === 'coffeeBeans'">
+                                        <send event="outOfResource" target="parent">
+                                            <content>"'coffeeBeans'"</content>
+                                        </send>
+                                        <elseif cond="event.data === 'water'"/>
+                                        <send event="outOfResource" target="parent">
+                                            <content>"'water'"</content>
+                                        </send>
+                                        <elseif cond="event.data === 'milk'"/>
+                                        <send event="outOfResource" target="parent">
+                                            <content>"'milk'"</content>
+                                        </send>
+                                        <elseif cond="event.data === 'chocolate'"/>
+                                        <send event="outOfResource" target="parent">
+                                            <content>"'chocolate'"</content>
+                                        </send>
+                                    </if>
+                                </onentry>
+                            </final>
+                            <state id="grinding">
+                                <onentry> 
+                                    <if cond="coffeeTask !== undefined">
+                                        <send event="updateResource.coffeeBeans" target="parent">
+                                            <param name="payload" expr="sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].coffeeBeans"/>
+                                        </send>
+                                        <assign location="currentCoffeeBeans" expr="currentCoffeeBeans - (sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].coffeeBeans)"/>
+                                        <send event="grinded" delayexpr="grindingTimes[coffeeTask.size]"/>
+                                    </if>
+                                </onentry>
+                                <transition event="grinded" target="heatingWater"/>
+                            </state>
+                            <state id="heatingWater">
+                                <onentry>
+                                    <send event="updateResource.water" target="parent">
+                                        <param name="payload" expr="sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].water"/>
+                                    </send>
+                                    <assign location="currentWater" expr="currentWater - (sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].water)"/>
+                                    <send event="waterHeated" delayexpr="heatingTime[coffeeTask.size]"/>
+                                </onentry>
+                                <transition event="waterHeated" target="brewing" cond="drinkRecipes[coffeeTask.drinkId].coffeeBeans !== 0"/>
+                                <transition event="waterHeated" target="pouring" cond="coffeeTask.drinkId === 'hotWater'"/>
+                                <transition event="waterHeated" target="addChocolate" cond="coffeeTask.drinkId === 'hotChocolate'"/>
+                            </state>
+                            <state id="brewing">
+                                <onentry>
+                                    <send event="brewed" delayexpr="brewingTimes[coffeeTask.drinkId]"/>
+                                </onentry>
+                                <transition event="brewed" target="heatingMilk" cond="drinkRecipes[coffeeTask.drinkId].milk !== 0"/>
+                                <transition event="brewed" target="pouring" cond="drinkRecipes[coffeeTask.drinkId].milk === 0"/>
+                            </state>
+                            <state id="addChocolate">
+                                <onentry>
+                                    <send event="updateResource.chocolate" target="parent">
+                                        <param name="payload" expr="sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].chocolate"/>
+                                    </send>
+                                    <assign location="currentChocolate" expr="currentChocolate - (sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].chocolate)"/>
+                                    <send event="chocolateAdded" delay="8s"/>
+                                </onentry>
+                                <transition event="chocolateAdded" target="pouring"/>
+                            </state>
+                            <state id="heatingMilk">
+                                <onentry>
+                                    <send event="updateResource.milk" target="parent">
+                                        <param name="payload" expr="sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].milk"/>
+                                        
+                                    </send>
+                                    <assign location="currentMilk" expr="currentMilk - (sizeQuantifiers[coffeeTask.size] * drinkRecipes[coffeeTask.drinkId].milk)"/>
+                                    <send event="milkHeated" delayexpr="heatingTime[coffeeTask.size]"/>
+                                </onentry>
+                                <transition event="milkHeated" target="pouring"/>
+                            </state>
+                            <state id="pouring">
+                                <onentry>
+                                    <send event="poured" delayexpr="pouringTimes[coffeeTask.size]"/>
+                                    <assign location="remainingQuantity" expr="remainingQuantity - 1"/>
+                                </onentry>
+                                <transition event="poured" target="checking" cond="remainingQuantity > 0"/>
+                                <transition event="poured" target="finished" cond="remainingQuantity === 0"/>
+                            </state>
+                            <final id="finished"/>
+                        </scxml>
+                    </content>
+                </invoke>
+                <transition event= "*" cond="event.type.includes('done.invoke')" target="idle"/>
+            </state>
+
+            <state id="refilling">
+                <onentry>
+                    <if cond="event.data.uriVariables.id === 'coffeeBeans'">
+                        <if cond="allAvailableResources.coffeeBeans + event.data.payload > 100">
+                            <assign location="allAvailableResources.coffeeBeans" expr="100"/>
+                        <else/>
+                            <assign location="allAvailableResources.coffeeBeans" expr="allAvailableResources.coffeeBeans + event.data.payload"/>
+                        </if> 
+                    </if>
+                    <if cond="event.data.uriVariables.id === 'water'">
+                        <if cond="allAvailableResources.water + event.data.payload > 100">
+                            <assign location="allAvailableResources.water" expr="100"/>
+                        <else/>
+                            <assign location="allAvailableResources.water" expr="allAvailableResources.water + event.data.payload"/>
+                        </if> 
+                    </if>
+                    <if cond="event.data.uriVariables.id === 'milk'">
+                        <if cond="allAvailableResources.milk + event.data.payload > 100">
+                            <assign location="allAvailableResources.milk" expr="100"/>
+                        <else/>
+                            <assign location="allAvailableResources.milk" expr="allAvailableResources.milk + event.data.payload"/>
+                        </if> 
+                    </if>
+                    <if cond="event.data.uriVariables.id === 'chocolate'">
+                        <if cond="allAvailableResources.chocolate + event.data.payload > 100">
+                            <assign location="allAvailableResources.chocolate" expr="100"/>
+                        <else/>
+                            <assign location="allAvailableResources.chocolate" expr="allAvailableResources.chocolate + event.data.payload"/>
+                        </if> 
+                    </if>
+                    <send event="refilled" delay="10s"/>
+                </onentry>
+                <transition event="refilled" target="idle">
+                    <send type="WoTIOProcessor" event="refilled"/>
+                </transition>
+            </state>
+        </state>
+    </parallel>
+
+<wot:affordances>
+    <wot:event name="outOfResource" emitEvent="outOfResource">
+        <content>
+            {
+                "description": "Out of resource event. Emitted when the available resource level is not sufficient for a desired drink.",
+                "data": {
+                    "type": "string",
+                    "enum": ["coffeeBeans", "water", "milk", "chocolate"]
+                }
+            }
+        </content>
+    </wot:event>
+    <wot:property name="allAvailableResources" dataElement="allAvailableResources">
+        <content>
+            {
+                "type": "object",
+                "description": "Current level of all available resources given as an integer percentage for each particular resource.\nThe data is obtained from the machine's sensors but can be set manually via the availableResourceLevel property in case the sensors are broken.",
+                "readOnly": true,
+                "properties": {
+                  "water": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "milk": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "chocolate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "coffeeBeans": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "writeOnly": false,
+                "observable": false
+            }
+        </content>
+    </wot:property>
+    <wot:property name="status" stateElement="coffeeOutlet"/>
+    <wot:property name="possibleDrinks" dataElement="possibleDrinks">
+        <content>
+            {
+                "type": "array",
+                "description": "The list of possible drinks in general. Doesn't depend on the available resources.",
+                "readOnly": true,
+                "items": {
+                  "type": "string"
+                }
+            }
+        </content>
+    </wot:property>
+    <wot:property name="availableResourceLevel" dataElement="allAvailableResources" accessParamter="id" accessProps="true" >
+        <content>
+            {
+                "readOnly": true
+            }
+        </content>
+    </wot:property>
+    <wot:action name="makeDrink">
+        <content>
+            {
+                "description": "Make a drink from available list of beverages. Accepts drink id, size and quantity as uriVariables.\n Brews one medium americano if no uriVariables are specified.",
+                "input": {
+                  "drinkId": {
+                    "type": "string",
+                    "description": "Defines what drink to make, drinkId is one of possibleDrinks property values, e.g. latte."
+                  },
+                  "size": {
+                    "type": "string",
+                    "description": "Defines the size of a drink, s = small, m = medium, l = large.",
+                    "enum": [
+                      "s",
+                      "m",
+                      "l"
+                    ]
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "description": "Defines how many drinks to make, ranging from 1 to 5.",
+                    "minimum": 1,
+                    "maximum": 5
+                  },
+                  "synchronous": true
+                }
+            }
+        </content>
+        <wot:op type="invokeaction" event="taskReceived" responseEvent ="taskDone"/>
+    </wot:action>
+    <wot:action name="refillResource">
+        <content>
+            {
+                "description": "Action used to refill a specific resource in the coffee machine",
+                "uriVariables": {
+                    "id": {
+                        "description": "ID of the resource to refill",
+                        "type": "string",
+                        "enum": [
+                            "water",
+                            "milk",
+                            "chocolate",
+                            "coffeeBeans"
+                        ]
+                    }
+                },
+                "input": {
+                    "description": "The amount of the resource used to refill. It is added to the current resource level",
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                },
+                "synchronous": true
+            }
+        </content>
+        <wot:op type="invokeaction" event="refill" responseEvent ="refilled"/>
+    </wot:action>
+</wot:affordances>
+
+</scxml>

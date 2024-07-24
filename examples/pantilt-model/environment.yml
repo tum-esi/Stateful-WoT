@@ -1,0 +1,10 @@
+name: omEnv
+channels:
+  - "conda-forge"
+dependencies:
+  - python
+  - pip
+  - pyfmi
+  - websockets
+  - pip:
+      - "OMPython"

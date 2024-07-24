@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" 
+version="1.0" datamodel="ecmascript" initial="off">
+  <datamodel>
+    <data id="door_closed" expr="true"/>
+  </datamodel>
+
+  <state id="off">
+    <transition event="turn.on" target="on"/>
+  </state>
+
+  <state id="on" initial="idle">
+    <state id="idle">
+      <transition event="door.close" target="cooking">
+        <assign location="door_closed" expr="true"/>
+      </transition>
+    </state>
+
+    <state id="cooking">
+      <transition event="door.open" target="idle">
+        <assign location="door_closed" expr="false"/>
+      </transition>
+    </state>
+  </state>
+</scxml>
