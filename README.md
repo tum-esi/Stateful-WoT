@@ -1,11 +1,13 @@
-# WoT State Machine
+# Stateful-WoT
 
-The WoT State Machine project is an effort to describe Web of Things API and its behavior using a standardized State Machine description format and use the resulting model to automatically generate a functioning Digital Twin of the device.
+The Stateful-WoT project is an effort to describe Web of Things API and its behavior using a standardized State Machine description format and use the resulting model to automatically generate a functioning Digital Twin of the device.
 
 State Machines are described using W3C SCXML Standard, which is first parsed and converted to a notation that fits with XState, an open source Typescript State Machine library.
 Code for interpreting and executing the State Machine is then generated and can be executed.
 
-We also provide an extension to SCXML that allows to generate fully W3C WoT compliant Digital Twins that expose a server to the outside using the node-wot library. SCXML needs to contain additional keywords for it to function correctly.
+We also provide an extension to SCXML that allows the generation of fully W3C WoT-compliant Digital Twins that expose a server to the outside using the node-wot library. SCXML needs to contain additional keywords for it to function correctly.
+
+To model the physical behavior as well, we extend SCXML to include Modelica models.
 
 ## Installation
 
