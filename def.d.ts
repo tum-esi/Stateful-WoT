@@ -17,6 +17,6 @@ interface InternalOperationRepresentation {
   propertyType?: 'data' | 'state'
   propertyElementId?: string
   availableIn: string[]
-  stateDependant?: boolean
+  stateDependent?: boolean
   [key: string]: { cond?: string, schema?: Record<string, any> } | any
 }

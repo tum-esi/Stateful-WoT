@@ -560,7 +560,7 @@ ${this.codeSnippets.events.emit}
       const assignsXpath = './scxml:assign'
       const assignArray = select(assignsXpath, transitionNode) as Element[]
       for (let i = 0; i < assignArray.length; i++) {
-        const location = assignArray[0].getAttribute('location')
+        const location = assignArray[i].getAttribute('location')
         const xpath = location !== null ? `//wot:property[@dataElement="${location}"]` : undefined
         const statePropertyNode = xpath !== undefined && !((location?.startsWith('event')) ?? false) ? select(xpath, this.scxmlNode) : null
         const dataProperty = statePropertyNode !== null && xpath !== undefined ? (select(xpath, this.scxmlNode) as Node[])[0] as Element | undefined : undefined
@@ -771,41 +771,41 @@ ${this.codeSnippets.events.emit}
 
     // find read prop
     const readPropNode = select('./wot:op[@type="readproperty"]', propertyNode, true) as Element | undefined
-    let readPropStateDependantAttr, readPropResponseEventAttr, readPropEventAttr
+    let readPropStateDependentAttr, readPropResponseEventAttr, readPropEventAttr
     if (readPropNode !== undefined) {
       // Event to initiate property read
       readPropEventAttr = select('./@event', readPropNode, true) as Attr | undefined
-      // Is reading the property dependant on current state
-      readPropStateDependantAttr = select('./@stateDependant', readPropNode, true) as Attr | undefined
+      // Is reading the property dependent on current state
+      readPropStateDependentAttr = select('./@stateDependent', readPropNode, true) as Attr | undefined
       // Event that is emitted from the state machine once the read operation is fulfilled
       readPropResponseEventAttr = select('./@responseEvent', readPropNode, true) as Attr | undefined
     }
 
     const hasReadPropEvent = readPropEventAttr?.value !== undefined
-    const readPropStateDependant = readPropStateDependantAttr?.value !== undefined && readPropStateDependantAttr?.value === 'false'
+    const readPropStateDependent = readPropStateDependentAttr?.value !== undefined && readPropStateDependentAttr?.value === 'false'
     const readHasResponseEvent = readPropResponseEventAttr?.value !== undefined
     if (!hasReadPropEvent && readHasResponseEvent) console.warn(`readproperty ${propertyName} has a response event defined, but no event, response event will be ignored!`)
 
     // find write prop
     const writePropNode = select('./wot:op[@type="writeproperty"]', propertyNode, true) as Element | undefined
-    let writePropStateDependantAttr, writePropResponseEventAttr, writePropEventAttr
+    let writePropStateDependentAttr, writePropResponseEventAttr, writePropEventAttr
     if (writePropNode !== undefined) {
       writePropEventAttr = select('./@event', writePropNode, true) as Attr | undefined
-      writePropStateDependantAttr = select('./@stateDependant', writePropNode, true) as Attr | undefined
+      writePropStateDependentAttr = select('./@stateDependent', writePropNode, true) as Attr | undefined
       writePropResponseEventAttr = select('./@responseEvent', writePropNode, true) as Attr | undefined
     }
     const hasWritePropEvent = writePropEventAttr?.value !== undefined
     const writeHasResponseEvent = writePropResponseEventAttr?.value !== undefined
-    const writePropStateDependant = writePropStateDependantAttr?.value !== undefined && writePropStateDependantAttr?.value === 'false'
+    const writePropStateDependent = writePropStateDependentAttr?.value !== undefined && writePropStateDependentAttr?.value === 'false'
     if (!hasWritePropEvent && writeHasResponseEvent) console.warn(`Writeproperty ${propertyName} has a response event defined, but no event, response event will be ignored!`)
 
-    // add read handler if no <wot:op> or if not state dependant and no event (always possible to read and response is instant)
-    if (readable && (readPropNode === undefined || (!readPropStateDependant && !hasReadPropEvent))) {
+    // add read handler if no <wot:op> or if not state dependent and no event (always possible to read and response is instant)
+    if (readable && (readPropNode === undefined || (!readPropStateDependent && !hasReadPropEvent))) {
       this.codeSnippets.properties.readproperty += `thing.setPropertyReadHandler('${propertyName}', async () => service.getSnapshot().context['${dataName}'])\n`
     }
 
-    // add write handler if no <wot:op> or if not state dependant and no event (always possible to write and response is instant)
-    if (writable && (writePropNode === undefined || (!writePropStateDependant && !hasWritePropEvent))) {
+    // add write handler if no <wot:op> or if not state dependent and no event (always possible to write and response is instant)
+    if (writable && (writePropNode === undefined || (!writePropStateDependent && !hasWritePropEvent))) {
       this.codeSnippets.properties.writeproperty += `thing.setPropertyWriteHandler('${propertyName}', async (input, options) => {
         service.send({
           type: 'writeproperty.${propertyName}',
@@ -905,39 +905,39 @@ ${this.codeSnippets.events.emit}
 
     // find read prop
     const readPropNode = select('./wot:op[@type="readproperty"]', propertyNode, true) as Element | undefined
-    let readPropStateDependantAttr, readPropResponseEventAttr, readPropEventAttr
+    let readPropStateDependentAttr, readPropResponseEventAttr, readPropEventAttr
     if (readPropNode !== undefined) {
-      // Event to initiate property read (if state dependant)
+      // Event to initiate property read (if state dependent)
       readPropEventAttr = select('./@event', readPropNode, true) as Attr | undefined
-      // Is reading the property dependant on current state
-      readPropStateDependantAttr = select('./@stateDependant', readPropNode, true) as Attr | undefined
+      // Is reading the property dependent on current state
+      readPropStateDependentAttr = select('./@stateDependent', readPropNode, true) as Attr | undefined
       // Event that is emitted from the state machine once the read operation is fulfilled
       readPropResponseEventAttr = select('./@responseEvent', readPropNode, true) as Attr | undefined
     }
 
     const hasReadPropEvent = readPropEventAttr?.value !== undefined
-    const readPropStateDependant = readPropStateDependantAttr?.value !== undefined && readPropStateDependantAttr?.value === 'false'
+    const readPropStateDependent = readPropStateDependentAttr?.value !== undefined && readPropStateDependentAttr?.value === 'false'
     const readHasResponseEvent = readPropResponseEventAttr?.value !== undefined
     if (!hasReadPropEvent && readHasResponseEvent) console.warn(`readproperty ${propertyName} has a response event defined, but no event, response event will be ignored!`)
 
     // find write prop
     const writePropNode = select('./wot:op[@type="writeproperty"]', propertyNode, true) as Element | undefined
-    let writePropStateDependantAttr, writePropResponseEventAttr, writePropEventAttr
+    let writePropStateDependentAttr, writePropResponseEventAttr, writePropEventAttr
     if (writePropNode !== undefined) {
-      // Event to initiate property write (if state dependant)
+      // Event to initiate property write (if state dependent)
       writePropEventAttr = select('./@event', writePropNode, true) as Attr | undefined
-      // Is reading the property dependant on current state
-      writePropStateDependantAttr = select('./@stateDependant', writePropNode, true) as Attr | undefined
+      // Is reading the property dependent on current state
+      writePropStateDependentAttr = select('./@stateDependent', writePropNode, true) as Attr | undefined
       // Event that is emitted from the state machine once the read operation is fulfilled
       writePropResponseEventAttr = select('./@responseEvent', writePropNode, true) as Attr | undefined
     }
     const hasWritePropEvent = writePropEventAttr?.value !== undefined
     const writeHasResponseEvent = writePropResponseEventAttr?.value !== undefined
-    const writePropStateDependant = writePropStateDependantAttr?.value !== undefined && writePropStateDependantAttr?.value === 'false'
+    const writePropStateDependent = writePropStateDependentAttr?.value !== undefined && writePropStateDependentAttr?.value === 'false'
     if (!hasWritePropEvent && writeHasResponseEvent) console.warn(`Writeproperty ${propertyName} has a response event defined, but no event, response event will be ignored!`)
 
-    // add read handler if readable but no <wot:op> or if not state dependant and no event (always possible to read and response is instant)
-    if (readable && (readPropNode === undefined || (!readPropStateDependant && !hasReadPropEvent))) {
+    // add read handler if readable but no <wot:op> or if not state dependent and no event (always possible to read and response is instant)
+    if (readable && (readPropNode === undefined || (!readPropStateDependent && !hasReadPropEvent))) {
       this.codeSnippets.properties.readproperty += `thing.setPropertyReadHandler('${propertyName}', (options) => { 
         if (options && typeof options === "object" && options.uriVariables) {
         const uriVariables = options.uriVariables;
@@ -949,8 +949,8 @@ ${this.codeSnippets.events.emit}
     })\n`
     }
 
-    // add write handler if writable but no <wot:op> or if not state dependant and no event (always possible to write and response is instant)
-    if (writable && (writePropNode === undefined || (!writePropStateDependant && !hasWritePropEvent))) {
+    // add write handler if writable but no <wot:op> or if not state dependent and no event (always possible to write and response is instant)
+    if (writable && (writePropNode === undefined || (!writePropStateDependent && !hasWritePropEvent))) {
       this.codeSnippets.properties.writeproperty += `thing.setPropertyWriteHandler('${propertyName}', async (input, options) => {
         service.send({
           type: 'writeproperty.${propertyName}',
@@ -990,19 +990,19 @@ ${this.codeSnippets.events.emit}
 
     // find read prop
     const readPropNode = select('./wot:op[@type="readproperty"]', propertyNode, true) as Element | undefined
-    let readPropStateDependantAttr, readPropResponseEventAttr, readPropEventAttr
+    let readPropStateDependentAttr, readPropResponseEventAttr, readPropEventAttr
     if (readPropNode !== undefined) {
       readPropEventAttr = select('./@event', readPropNode, true) as Attr | undefined
-      readPropStateDependantAttr = select('./@stateDependant', readPropNode, true) as Attr | undefined
+      readPropStateDependentAttr = select('./@stateDependent', readPropNode, true) as Attr | undefined
       readPropResponseEventAttr = select('./@responseEvent', readPropNode, true) as Attr | undefined
     }
     const hasReadPropEvent = readPropEventAttr?.value !== undefined
-    const readPropStateDependant = readPropStateDependantAttr?.value !== undefined && readPropStateDependantAttr?.value === 'false'
+    const readPropStateDependent = readPropStateDependentAttr?.value !== undefined && readPropStateDependentAttr?.value === 'false'
     const readHasResponseEvent = readPropResponseEventAttr?.value !== undefined
     if (!hasReadPropEvent && readHasResponseEvent) console.warn(`readproperty ${propertyName} has a response event defined, but no event, response event will be ignored!`)
 
     // Add read handler
-    if (readable && (readPropNode === undefined || (!readPropStateDependant && !hasReadPropEvent))) {
+    if (readable && (readPropNode === undefined || (!readPropStateDependent && !hasReadPropEvent))) {
       this.codeSnippets.properties.readproperty += `thing.setPropertyReadHandler('${propertyName}', () => service.getSnapshot().value`
       let parents = this.findParentStates(stateNode)
       parents = parents.reverse()
@@ -1259,15 +1259,15 @@ ${this.codeSnippets.events.emit}
 
       // find write prop
       const writePropNode = select('./wot:op[@type="writeproperty"]', wotPropertyElement, true) as Element | undefined
-      let writePropStateDependantAttr, writePropResponseEventAttr
+      let writePropStateDependentAttr, writePropResponseEventAttr
       if (writePropNode !== undefined) {
-        writePropStateDependantAttr = select('./@stateDependant', writePropNode, true) as Attr | undefined
+        writePropStateDependentAttr = select('./@stateDependent', writePropNode, true) as Attr | undefined
         writePropResponseEventAttr = select('./@responseEvent', writePropNode, true) as Attr | undefined
       }
       const writeHasResponseEvent = writePropResponseEventAttr?.value !== undefined
-      const writePropStateDependant = writePropStateDependantAttr?.value !== undefined && writePropStateDependantAttr?.value === 'false'
+      const writePropStateDependent = writePropStateDependentAttr?.value !== undefined && writePropStateDependentAttr?.value === 'false'
 
-      if (writable && (writePropNode === undefined || (!writePropStateDependant && !writeHasResponseEvent))) {
+      if (writable && (writePropNode === undefined || (!writePropStateDependent && !writeHasResponseEvent))) {
         writableProperties.push(dataElementId)
       }
     }
@@ -1282,12 +1282,12 @@ ${this.codeSnippets.events.emit}
     const typeAttr = select('./@type', opElement, true) as Attr
     const eventAttr = select('./@event', opElement, true) as Attr | undefined
     const responseEventAttr = select('./@responseEvent', opElement, true) as Attr | undefined
-    const stateDependantAttr = select('./@stateDependant', opElement, true) as Attr | undefined
+    const stateDependentAttr = select('./@stateDependent', opElement, true) as Attr | undefined
 
     const type = typeAttr.value as AffordanceOperations
     const event = eventAttr?.value
     const responseEvent = responseEventAttr?.value
-    const stateDependant = stateDependantAttr?.value !== undefined && stateDependantAttr?.value !== 'false'
+    const stateDependent = stateDependentAttr?.value !== undefined && stateDependentAttr?.value !== 'false'
 
     if (affordanceObject[`scxml:${affordanceType}`] === undefined) affordanceObject[`scxml:${affordanceType}`] = {}
     if (affordanceObject[`scxml:${affordanceType}`][type] === undefined) {
@@ -1299,7 +1299,7 @@ ${this.codeSnippets.events.emit}
 
     let availableIn: string[] = []
 
-    if (event === undefined && stateDependant) {
+    if (event === undefined && stateDependent) {
       availableInAttr = opElement.getAttribute('availableIn')
       if (availableInAttr !== null) availableIn = availableInAttr.split(' ')
 
@@ -1340,10 +1340,10 @@ ${this.codeSnippets.events.emit}
     }
     // Special Case for action
     if (affordanceElement.tagName === 'wot:action') {
-      affordanceObject.synchronous = !(responseEvent === undefined || stateDependant)
+      affordanceObject.synchronous = !(responseEvent === undefined || stateDependent)
     }
 
-    this.internalOps.push({ name, affordanceType, affordanceObject, event, op: type, availableIn, responseEvent, stateDependant, propertyType, propertyElementId })
+    this.internalOps.push({ name, affordanceType, affordanceObject, event, op: type, availableIn, responseEvent, stateDependent, propertyType, propertyElementId })
   }
 
   // TODO fix code generation
@@ -1354,7 +1354,7 @@ ${this.codeSnippets.events.emit}
         case 'property':
           switch (op.op) {
             case 'readproperty':
-              if (op.event === undefined && op.stateDependant !== undefined && op.stateDependant) {
+              if (op.event === undefined && op.stateDependent !== undefined && op.stateDependent) {
                 // Define property handler
                 this.codeSnippets.properties[op.op] += `thing.setPropertyReadHandler('${op.name}', async (inputData, options) => {\n`
                 // Generate state check code only if there are availableIn states
@@ -1380,7 +1380,7 @@ ${this.codeSnippets.events.emit}
               } else if (op.event !== undefined && op.propertyType !== undefined && op.propertyType === 'data') {
                 this.codeSnippets.properties[op.op] += `thing.setPropertyReadHandler('${op.name}', async (inputData, options) => {`
 
-                if (op.stateDependant !== undefined && op.stateDependant && op.availableIn.length > 0) this.codeSnippets.properties[op.op] += this.generateStateCheckCode(op)
+                if (op.stateDependent !== undefined && op.stateDependent && op.availableIn.length > 0) this.codeSnippets.properties[op.op] += this.generateStateCheckCode(op)
 
                 if (op.responseEvent === undefined) throw new Error(`readproperty ${op.name} requires a response event with data!`)
 
@@ -1390,13 +1390,13 @@ ${this.codeSnippets.events.emit}
                   return data
                 })
                 `
-                if (op.stateDependant !== undefined && op.stateDependant && op.availableIn.length > 0) this.codeSnippets.properties[op.op] += '}'
+                if (op.stateDependent !== undefined && op.stateDependent && op.availableIn.length > 0) this.codeSnippets.properties[op.op] += '}'
                 this.codeSnippets.properties[op.op] += '})'
               }
               break
             case 'writeproperty':
               this.codeSnippets.properties[op.op] += `thing.setPropertyWriteHandler('${op.name}', async (inputData, options) => {`
-              if (op.event === undefined && op.stateDependant !== undefined && op.stateDependant && op.propertyType !== undefined && op.propertyType === 'data') {
+              if (op.event === undefined && op.stateDependent !== undefined && op.stateDependent && op.propertyType !== undefined && op.propertyType === 'data') {
                 if (op.availableIn.length > 0) this.codeSnippets.properties[op.op] += this.generateStateCheckCode(op)
                 if (op.propertyElementId !== undefined) {
                   this.codeSnippets.properties[op.op] += `service.send({
@@ -1411,7 +1411,7 @@ ${this.codeSnippets.events.emit}
                 if (op.availableIn.length > 0) this.codeSnippets.properties[op.op] += '}'
                 this.codeSnippets.properties[op.op] += '})'
               } else if (op.event !== undefined && op.propertyType !== undefined && op.propertyType === 'data') {
-                if (op.stateDependant !== undefined && op.stateDependant && op.availableIn.length > 0) {
+                if (op.stateDependent !== undefined && op.stateDependent && op.availableIn.length > 0) {
                   this.codeSnippets.properties[op.op] += this.generateStateCheckCode(op)
                 }
                 if (op.responseEvent !== undefined) {
@@ -1431,7 +1431,7 @@ ${this.codeSnippets.events.emit}
                   })
                   `
                 }
-                if (op.stateDependant !== undefined && op.stateDependant && op.availableIn.length > 0) this.codeSnippets.properties[op.op] += '}'
+                if (op.stateDependent !== undefined && op.stateDependent && op.availableIn.length > 0) this.codeSnippets.properties[op.op] += '}'
                 this.codeSnippets.properties[op.op] += '})'
               }
               break

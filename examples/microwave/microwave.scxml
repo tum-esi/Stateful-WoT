@@ -73,7 +73,7 @@
           "readonly": true
         }
       </content>
-      <wot:op type="readproperty" stateDependant="true" availableIn="on"/>
+      <wot:op type="readproperty" stateDependent="true" availableIn="on"/>
     </wot:property>
     <wot:action name="turnOn">
       <content>
