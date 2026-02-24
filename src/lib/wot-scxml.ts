@@ -242,14 +242,14 @@ ${this.codeSnippets.events.emit}
 
     let wsHandlerCode = "";
     for (let i = 0; i < this.simulationTargets.length; i++) {
-      wsHandlerCode = `ws${i}.on('message', (responseMessage: string) => {
+      wsHandlerCode += `\nws${i}.on('message', (responseMessage: string) => {
         const response = JSON.parse(responseMessage)
         const simId = response.simId
         service.send({
           type: \`_sim_\${simId}.response\`,
           data: response as any
         })
-      })`;
+      });\n`;
     }
     return prettier.format(xstateCode.concat(tdCode, wsHandlerCode), {
       parser: "typescript",
@@ -489,7 +489,7 @@ ${this.codeSnippets.events.emit}
     const delayExprAttr = select("./@delayexpr", sendNode, true) as
       | Attr
       | undefined;
-    const namelistAttr = select("./@namelistAttr", sendNode, true) as
+    const namelistAttr = select("./@namelist", sendNode, true) as
       | Attr
       | undefined;
 
@@ -1734,36 +1734,33 @@ ${this.codeSnippets.events.emit}
       "state",
     );
     propertyWriteHandlerNode.setAttribute("id", "_propertywriteHandler");
-    // create transition
-    const propertyWriteTransition = scxmlDoc.createElementNS(
-      "http://www.w3.org/2005/07/scxml",
-      "transition",
-    );
-    propertyWriteTransition.setAttribute("target", "_propertywriteHandler");
-    propertyWriteTransition.setAttribute("event", "*");
-    let conditionString = 'event.type.includes("writeproperty") && (';
     for (const property of properties) {
-      conditionString = conditionString.concat(
-        `event.type.split(".")[1] === "${property}" ||`,
+      // create transition
+      const propertyWriteTransition = scxmlDoc.createElementNS(
+        "http://www.w3.org/2005/07/scxml",
+        "transition",
       );
+      propertyWriteTransition.setAttribute("target", "_propertywriteHandler");
+      propertyWriteTransition.setAttribute(
+        "event",
+        `writeproperty.${property}`,
+      );
+      propertyWriteTransition.setAttribute(
+        "cond",
+        `event.type === "writeproperty.${property}"`,
+      );
+
+      // create write action
+      const propertyWriteAssign = scxmlDoc.createElementNS(
+        "http://www.w3.org/2005/07/scxml",
+        "assign",
+      );
+      propertyWriteAssign.setAttribute("location", property);
+      propertyWriteAssign.setAttribute("expr", "event.data.payload");
+
+      propertyWriteTransition.appendChild(propertyWriteAssign);
+      propertyWriteHandlerNode.appendChild(propertyWriteTransition);
     }
-    conditionString = conditionString.slice(0, -2);
-    conditionString = conditionString.concat(")");
-
-    propertyWriteTransition.setAttribute(
-      "cond",
-      'event.type.includes("writeproperty")',
-    );
-    // create write action
-    const propertyWriteAssign = scxmlDoc.createElementNS(
-      "http://www.w3.org/2005/07/scxml",
-      "assign",
-    );
-    propertyWriteAssign.setAttribute("location", 'event.type.split(".")[1]');
-    propertyWriteAssign.setAttribute("expr", "event.data.payload");
-
-    propertyWriteTransition.appendChild(propertyWriteAssign);
-    propertyWriteHandlerNode.appendChild(propertyWriteTransition);
 
     if (isTopLevelParallel) {
       const topParallelNode = select(
@@ -1815,7 +1812,7 @@ ${this.codeSnippets.events.emit}
         "state",
       );
       machineWrapperNode.setAttribute("id", "_wotMachinewrapper");
-      const initialAttr = select("./@inital", scxmlNode, true) as
+      const initialAttr = select("./@initial", scxmlNode, true) as
         | Attr
         | undefined;
       if (initialAttr?.value !== undefined)
@@ -2069,7 +2066,7 @@ ${this.codeSnippets.events.emit}
                 ) {
                   this.codeSnippets.properties[
                     op.op
-                  ] += `return service.getSnapshot().context['${op.propertyElementId}'])\n`;
+                  ] += `return service.getSnapshot().context['${op.propertyElementId}']\n`;
                 } else if (
                   op.propertyType !== undefined &&
                   op.propertyType === "state" &&
@@ -2153,11 +2150,11 @@ ${this.codeSnippets.events.emit}
                   this.codeSnippets.properties[op.op] += `service.send({
                       type: 'writeproperty.${op.propertyElementId}',
                       data: {
-                        payload: await input.value,
+                        payload: await inputData.value(),
                         uriVariables: options.uriVariables
                       }
                     } as any)
-                  })`;
+                  `;
                 }
                 if (op.availableIn.length > 0)
                   this.codeSnippets.properties[op.op] += "}";
@@ -2761,7 +2758,7 @@ ${this.codeSnippets.events.emit}
           "http://www.w3.org/2005/07/scxml",
           "param",
         );
-        tickParamInputs.setAttribute("name", "parameters");
+        tickParamInputs.setAttribute("name", "inputs");
         let dataString = "{";
         for (const parameter in modelVariables.inputs) {
           dataString += `"${parameter}": ${
@@ -2771,6 +2768,7 @@ ${this.codeSnippets.events.emit}
         dataString = dataString.slice(0, -1);
         dataString += "}";
         tickParamInputs.setAttribute("expr", dataString);
+        tickTransitionSend.appendChild(tickParamInputs);
       }
 
       // *------------------------------------------ Tick Response ------------------------------------------*/
@@ -2789,16 +2787,8 @@ ${this.codeSnippets.events.emit}
         "http://www.w3.org/2005/07/scxml",
         "transition",
       );
-      responseTransition.setAttributeNS(
-        "http://www.w3.org/2005/07/scxml",
-        "event",
-        `_sim_${modelName}.response`,
-      );
-      responseTransition.setAttributeNS(
-        "http://www.w3.org/2005/07/scxml",
-        "target",
-        `_${stateNodeId}_modelPreTick`,
-      );
+      responseTransition.setAttribute("event", `_sim_${modelName}.response`);
+      responseTransition.setAttribute("target", `_${stateNodeId}_modelPreTick`);
       modelTickResponseState.appendChild(responseTransition);
 
       // On Entry
@@ -2907,7 +2897,6 @@ ${this.codeSnippets.events.emit}
       }
       `;
       this.XStateMachineOptions.guards.clockCond = "{{clockCond}}" as any;
-      clockPostTickState.appendChild(clockPostTickTransition);
     }
   }
 }

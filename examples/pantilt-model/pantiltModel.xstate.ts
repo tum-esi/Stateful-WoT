@@ -1144,6 +1144,7 @@ servient.start().then(async (WoT) => {
   service.start();
   thing.expose();
 });
+
 ws0.on("message", (responseMessage: string) => {
   const response = JSON.parse(responseMessage);
   const simId = response.simId;

@@ -1138,7 +1138,7 @@ const ${
     const delayExprAttr = select("./@delayexpr", sendNode, true) as
       | Attr
       | undefined;
-    const namelistAttr = select("./@namelistAttr", sendNode, true) as
+    const namelistAttr = select("./@namelist", sendNode, true) as
       | Attr
       | undefined;
 
@@ -1430,7 +1430,7 @@ const ${
     const idlocationAttr = select("./@idlocation", invokeNode, true) as
       | Attr
       | undefined;
-    const namelistAttr = select("./@namelistAttr", invokeNode, true) as
+    const namelistAttr = select("./@namelist", invokeNode, true) as
       | Attr
       | undefined;
     const autoForwardAttr = select("./@autoforward", invokeNode, true) as

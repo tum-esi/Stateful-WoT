@@ -16,7 +16,7 @@
 </datamodel>
 
 <parallel id="servos">
-    <state id="panServo">
+    <state initial="panIdle" id="panServo">
         <state id="panIdle">
             <onentry>
                 <assign location="panTarget" expr="0"/>
@@ -36,7 +36,7 @@
 
             <transition event="invokeaction.panContinuously" cond="event.data.payload !== 0" target="panningContinuously">
                 <assign location="pan_speed" expr="event.data.payload"/>
-                <wot:data cond="panPostion === -90">
+                <wot:data cond="panPosition === -90">
                     {
                         "description": "The speed at which the platform moves. Negative values for right and positive values for left",
                         "maximum": 15,
@@ -45,7 +45,7 @@
                         "unit": "angle per sec"
                     }
                 </wot:data>
-                <wot:data cond="panPostion === 90">
+                <wot:data cond="panPosition === 90">
                     {
                         "description": "The speed at which the platform moves. Negative values for right and positive values for left",
                         "maximum": 0,
@@ -124,7 +124,7 @@
         </state>
     </state>
 
-    <state id="tiltServo">
+    <state initial="tiltIdle" id="tiltServo">
         <state id="tiltIdle">
             <onentry>
                 <assign location="tiltTarget" expr="0"/>
@@ -449,7 +449,7 @@
                 {
                     "description": "Moves the pan platform with speed given in input until a stop action is invoked or limits are reached",
                     "idempotent": false,
-                    "synchronous": false
+                    "synchronous": false,
                     "input": {
                       "description": "The speed at which the platform moves. Negative values for right and positive values for left",
                       "maximum": 15,
