@@ -16,6 +16,12 @@ import {
   spawn,
   AnyStateMachine,
   sendParent,
+  AnyEventObject,
+  BaseActionObject,
+  ResolveTypegenMeta,
+  ServiceMap,
+  State,
+  TypegenDisabled,
 } from "xstate";
 const { choose, log, assign, raise, send, cancel, start, stop } = actions;
 
@@ -39,9 +45,10 @@ function delayToMs(delay: string | number): number {
       return parseInt(secondsMatch[2], 10) * 1000;
     }
 
-    const secondsPart = !(secondsMatch[3] !== undefined)
-      ? parseInt(secondsMatch[3], 10) * 1000
-      : 0;
+    const secondsPart =
+      secondsMatch[3] !== undefined && secondsMatch[3] !== ""
+        ? parseInt(secondsMatch[3], 10) * 1000
+        : 0;
 
     let millisecondsPart = parseFloat(`0.${secondsMatch[5]}`) * 1000;
     millisecondsPart = Math.floor(millisecondsPart);
@@ -63,7 +70,7 @@ function delayToS(delay: string | number): number {
 
 function InvokedMachineFactory(
   machine: AnyStateMachine,
-  initContext: any
+  initContext: any,
 ): AnyStateMachine {
   return machine.withContext(initContext);
 }
@@ -312,7 +319,7 @@ const altivar320 = createMachine(
     },
     delays: {},
     services: {},
-  }
+  },
 );
 
 const service = interpret(altivar320);
@@ -417,25 +424,25 @@ servient.start().then(async (WoT) => {
 
   thing.setPropertyReadHandler(
     "driveStatus",
-    () => service.getSnapshot().value["drive"]
+    () => service.getSnapshot().value["drive"],
   );
   thing.setPropertyReadHandler(
     "statusDisplay",
-    async () => service.getSnapshot().context["statusDisplay"]
+    async () => service.getSnapshot().context["statusDisplay"],
   );
   thing.setPropertyReadHandler(
     "powerStatus",
-    async () => service.getSnapshot().context["powerAbsent"]
+    async () => service.getSnapshot().context["powerAbsent"],
   );
   thing.setPropertyReadHandler(
     "quickStopCode",
-    async () => service.getSnapshot().context["quickStopCode"]
+    async () => service.getSnapshot().context["quickStopCode"],
   );
   thing.setPropertyReadHandler("state", async () =>
-    service.getSnapshot().toJSON()
+    service.getSnapshot().toJSON(),
   );
 
-  /*=========================================== Prsoperty Write Handlers ===========================================*/
+  /*=========================================== Property Write Handlers ===========================================*/
 
   thing.setPropertyWriteHandler("statusDisplay", async (input, options) => {
     service.send({
@@ -470,15 +477,17 @@ servient.start().then(async (WoT) => {
   thing.setActionHandler("enableOperation", async (inputData, options) => {
     const currentState = service.getSnapshot();
     if (
-      !["_wotwrapper._wotMachinewrapper.drive.4"].some(currentState.matches)
+      !["_wotwrapper._wotMachinewrapper.drive.4"].some((s) =>
+        currentState.matches(s),
+      )
     ) {
       throw new Error(
-        "invokeaction enableOperation is not accessible in current state"
+        "invokeaction enableOperation is not accessible in current state",
       );
     } else {
       const responsePromise = once(
         responseHandlerEmitter,
-        "enableoperation.done"
+        "enableoperation.done",
       );
       service.send({ type: "invokeaction.enableoperation" } as any);
       const [data] = await responsePromise;
@@ -488,15 +497,17 @@ servient.start().then(async (WoT) => {
   thing.setActionHandler("disableOperation", async (inputData, options) => {
     const currentState = service.getSnapshot();
     if (
-      !["_wotwrapper._wotMachinewrapper.drive.5"].some(currentState.matches)
+      !["_wotwrapper._wotMachinewrapper.drive.5"].some((s) =>
+        currentState.matches(s),
+      )
     ) {
       throw new Error(
-        "invokeaction disableOperation is not accessible in current state"
+        "invokeaction disableOperation is not accessible in current state",
       );
     } else {
       const responsePromise = once(
         responseHandlerEmitter,
-        "disableoperation.done"
+        "disableoperation.done",
       );
       service.send({ type: "invokeaction.disableoperation" } as any);
       const [data] = await responsePromise;
@@ -511,15 +522,15 @@ servient.start().then(async (WoT) => {
         "_wotwrapper._wotMachinewrapper.drive.4",
         "_wotwrapper._wotMachinewrapper.drive.5",
         "_wotwrapper._wotMachinewrapper.drive.6",
-      ].some(currentState.matches)
+      ].some((s) => currentState.matches(s))
     ) {
       throw new Error(
-        "invokeaction disableVoltage is not accessible in current state"
+        "invokeaction disableVoltage is not accessible in current state",
       );
     } else {
       const responsePromise = once(
         responseHandlerEmitter,
-        "disablevoltage.done"
+        "disablevoltage.done",
       );
       service.send({ type: "invokeaction.disablevoltage" } as any);
       const [data] = await responsePromise;
@@ -533,10 +544,10 @@ servient.start().then(async (WoT) => {
         "_wotwrapper._wotMachinewrapper.drive.3",
         "_wotwrapper._wotMachinewrapper.drive.4",
         "_wotwrapper._wotMachinewrapper.drive.5",
-      ].some(currentState.matches)
+      ].some((s) => currentState.matches(s))
     ) {
       throw new Error(
-        "invokeaction quickStop is not accessible in current state"
+        "invokeaction quickStop is not accessible in current state",
       );
     } else {
       const responsePromise = once(responseHandlerEmitter, "quickstop.done");
@@ -560,7 +571,40 @@ servient.start().then(async (WoT) => {
 
   /*================================================= On Transition ===============================================*/
 
-  let lastState, lastContext;
+  let lastState:
+      | State<
+          {
+            powerAbsent: boolean;
+            statusDisplay: string;
+            quickStopCode: number;
+            _stepSize: string;
+          },
+          AnyEventObject,
+          any,
+          {
+            value: any;
+            context: {
+              powerAbsent: boolean;
+              statusDisplay: string;
+              quickStopCode: number;
+              _stepSize: string;
+            };
+          },
+          ResolveTypegenMeta<
+            TypegenDisabled,
+            AnyEventObject,
+            BaseActionObject,
+            ServiceMap
+          >
+        >
+      | undefined,
+    lastContext: {
+      value?: any;
+      powerAbsent?: boolean;
+      statusDisplay?: string;
+      quickStopCode?: number;
+      _stepSize?: string;
+    };
   service.onTransition((state) => {
     console.log(`${td.title}:`);
     console.log(`Recieved Event: ${JSON.stringify(state.event)}`);

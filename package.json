@@ -4,7 +4,7 @@
   "description": "Testing SCXML",
   "main": "main.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
     "cli": "node build/cli.js"
@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.1",
+    "@types/jest": "^30.0.0",
     "@types/lodash": "^4.14.191",
     "@types/node": "^18.11.9",
     "@types/node-fetch": "^2.6.2",
@@ -47,11 +48,14 @@
     "@types/xmldom": "^0.1.31",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "eslint": "^8.0.1",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-config-standard-with-typescript": "^24.0.0",
     "eslint-plugin-import": "^2.25.2",
     "eslint-plugin-n": "^15.0.0",
     "eslint-plugin-promise": "^6.0.0",
+    "jest": "^30.2.0",
     "prettier": "2.8.1",
+    "ts-jest": "^29.4.6",
     "typescript": "*"
   }
 }

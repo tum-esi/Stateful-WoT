@@ -40,9 +40,10 @@ function delayToMs(delay: string | number): number {
       return parseInt(secondsMatch[2], 10) * 1000;
     }
 
-    const secondsPart = !(secondsMatch[3] !== undefined)
-      ? parseInt(secondsMatch[3], 10) * 1000
-      : 0;
+    const secondsPart =
+      secondsMatch[3] !== undefined && secondsMatch[3] !== ""
+        ? parseInt(secondsMatch[3], 10) * 1000
+        : 0;
 
     let millisecondsPart = parseFloat(`0.${secondsMatch[5]}`) * 1000;
     millisecondsPart = Math.floor(millisecondsPart);
@@ -64,7 +65,7 @@ function delayToS(delay: string | number): number {
 
 function InvokedMachineFactory(
   machine: AnyStateMachine,
-  initContext: any
+  initContext: any,
 ): AnyStateMachine {
   return machine.withContext(initContext);
 }
@@ -85,7 +86,7 @@ const pantilt = createMachine(
       tilt_speed: 0,
       _panCon_responseReceived: false,
       _tiltCon_responseReceived: false,
-      _stepSize: "0.05s",
+      _stepSize: "0.01s",
     },
     states: {
       _wotwrapper: {
@@ -172,7 +173,7 @@ const pantilt = createMachine(
                                       assign({
                                         panPosition: (
                                           context: any,
-                                          event: any
+                                          event: any,
                                         ) => {
                                           return context["panTarget"] -
                                             context["panPosition"] >
@@ -191,7 +192,7 @@ const pantilt = createMachine(
                                       assign({
                                         panPosition: (
                                           context: any,
-                                          event: any
+                                          event: any,
                                         ) => {
                                           return context["panTarget"] -
                                             context["panPosition"] <
@@ -395,7 +396,7 @@ const pantilt = createMachine(
                                       assign({
                                         tiltPosition: (
                                           context: any,
-                                          event: any
+                                          event: any,
                                         ) => {
                                           return context["tiltTarget"] -
                                             context["tiltPosition"] >
@@ -414,7 +415,7 @@ const pantilt = createMachine(
                                       assign({
                                         tiltPosition: (
                                           context: any,
-                                          event: any
+                                          event: any,
                                         ) => {
                                           return context["tiltTarget"] -
                                             context["tiltPosition"] <
@@ -597,7 +598,7 @@ const pantilt = createMachine(
               speed: context["pan_speed"],
               startPos: context["panPosition"],
             },
-          })
+          }),
         );
       },
       wotSim_1: (context, event) => {
@@ -605,7 +606,7 @@ const pantilt = createMachine(
           JSON.stringify({
             simId: "panCon",
             messageType: "step",
-          })
+          }),
         );
       },
       wotResponse_2: (context, event) => {
@@ -624,7 +625,7 @@ const pantilt = createMachine(
               speed: context["tilt_speed"],
               startPos: context["tiltPosition"],
             },
-          })
+          }),
         );
       },
       wotSim_3: (context, event) => {
@@ -632,7 +633,7 @@ const pantilt = createMachine(
           JSON.stringify({
             simId: "tiltCon",
             messageType: "step",
-          })
+          }),
         );
       },
     },
@@ -669,7 +670,7 @@ const pantilt = createMachine(
     },
     delays: {},
     services: {},
-  }
+  },
 );
 
 const service = interpret(pantilt);
@@ -683,8 +684,8 @@ const td: any = {
   properties: {
     panPosition: {
       description: "The current position of the pan platform in degrees",
-      maximum: 91,
-      minimum: -91,
+      maximum: 90,
+      minimum: -90,
       observable: true,
       readOnly: true,
       title: "Pan Position",
@@ -694,8 +695,8 @@ const td: any = {
     },
     tiltPosition: {
       description: "The current position of the pan platform in degrees",
-      maximum: 81,
-      minimum: -81,
+      maximum: 80,
+      minimum: -80,
       observable: true,
       readOnly: true,
       title: "Tilt Position",
@@ -945,22 +946,22 @@ servient.start().then(async (WoT) => {
 
   thing.setPropertyReadHandler(
     "panPosition",
-    async () => service.getSnapshot().context["panPosition"]
+    async () => service.getSnapshot().context["panPosition"],
   );
   thing.setPropertyReadHandler(
     "tiltPosition",
-    async () => service.getSnapshot().context["tiltPosition"]
+    async () => service.getSnapshot().context["tiltPosition"],
   );
   thing.setPropertyReadHandler(
     "panState",
-    () => service.getSnapshot().value["servos"]["panServo"]
+    () => service.getSnapshot().value["servos"]["panServo"],
   );
   thing.setPropertyReadHandler(
     "tiltState",
-    () => service.getSnapshot().value["servos"]["tiltServo"]
+    () => service.getSnapshot().value["servos"]["tiltServo"],
   );
   thing.setPropertyReadHandler("state", async () =>
-    service.getSnapshot().toJSON()
+    service.getSnapshot().toJSON(),
   );
 
   /*=========================================== Property Write Handlers ===========================================*/
@@ -973,21 +974,15 @@ servient.start().then(async (WoT) => {
       ![
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltIdle",
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltingContinuously",
-      ].some(currentState.matches)
+      ].some((s) => currentState.matches(s))
     ) {
       throw new Error("invokeaction tiltTo is not accessible in current state");
     } else {
       const responsePromise = once(
         responseHandlerEmitter,
-        "response.invokeaction.tiltTo"
+        "response.invokeaction.tiltTo",
       );
-      service.send({
-        type: "invokeaction.tiltTo",
-        data: {
-          payload: await inputData.value(),
-          uriVariables: options?.uriVariables,
-        },
-      } as any);
+      service.send({ type: "invokeaction.tiltTo" } as any);
       const [data] = await responsePromise;
       return data;
     }
@@ -998,21 +993,15 @@ servient.start().then(async (WoT) => {
       ![
         "_wotwrapper._wotMachinewrapper.servos.panServo.panIdle",
         "_wotwrapper._wotMachinewrapper.servos.panServo.panningContinuously",
-      ].some(currentState.matches)
+      ].some((s) => currentState.matches(s))
     ) {
       throw new Error("invokeaction panTo is not accessible in current state");
     } else {
       const responsePromise = once(
         responseHandlerEmitter,
-        "response.invokeaction.panTo"
+        "response.invokeaction.panTo",
       );
-      service.send({
-        type: "invokeaction.panTo",
-        data: {
-          payload: await inputData.value(),
-          uriVariables: options?.uriVariables,
-        },
-      } as any);
+      service.send({ type: "invokeaction.panTo" } as any);
       const [data] = await responsePromise;
       return data;
     }
@@ -1025,17 +1014,11 @@ servient.start().then(async (WoT) => {
         "_wotwrapper._wotMachinewrapper.servos.panServo.panningContinuously",
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltIdle",
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltingContinuously",
-      ].some(currentState.matches)
+      ].some((s) => currentState.matches(s))
     ) {
       throw new Error("invokeaction moveTo is not accessible in current state");
     } else {
-      service.send({
-        type: "invokeaction.moveTo",
-        data: {
-          payload: await inputData.value(),
-          uriVariables: options?.uriVariables,
-        },
-      } as any);
+      service.send({ type: "invokeaction.moveTo" } as any);
       return undefined;
     }
   });
@@ -1045,19 +1028,13 @@ servient.start().then(async (WoT) => {
       ![
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltIdle",
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltToTarget",
-      ].some(currentState.matches)
+      ].some((s) => currentState.matches(s))
     ) {
       throw new Error(
-        "invokeaction tiltContinuously is not accessible in current state"
+        "invokeaction tiltContinuously is not accessible in current state",
       );
     } else {
-      service.send({
-        type: "invokeaction.tiltContinuously",
-        data: {
-          payload: await inputData.value(),
-          uriVariables: options?.uriVariables,
-        },
-      } as any);
+      service.send({ type: "invokeaction.tiltContinuously" } as any);
       return undefined;
     }
   });
@@ -1067,19 +1044,13 @@ servient.start().then(async (WoT) => {
       ![
         "_wotwrapper._wotMachinewrapper.servos.panServo.panIdle",
         "_wotwrapper._wotMachinewrapper.servos.panServo.panToTarget",
-      ].some(currentState.matches)
+      ].some((s) => currentState.matches(s))
     ) {
       throw new Error(
-        "invokeaction panContinuously is not accessible in current state"
+        "invokeaction panContinuously is not accessible in current state",
       );
     } else {
-      service.send({
-        type: "invokeaction.panContinuously",
-        data: {
-          payload: await inputData.value(),
-          uriVariables: options?.uriVariables,
-        },
-      } as any);
+      service.send({ type: "invokeaction.panContinuously" } as any);
       return undefined;
     }
   });
@@ -1091,19 +1062,13 @@ servient.start().then(async (WoT) => {
         "_wotwrapper._wotMachinewrapper.servos.panServo.panToTarget",
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltIdle",
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltToTarget",
-      ].some(currentState.matches)
+      ].some((s) => currentState.matches(s))
     ) {
       throw new Error(
-        "invokeaction moveContinuously is not accessible in current state"
+        "invokeaction moveContinuously is not accessible in current state",
       );
     } else {
-      service.send({
-        type: "invokeaction.moveContinuously",
-        data: {
-          payload: await inputData.value(),
-          uriVariables: options?.uriVariables,
-        },
-      } as any);
+      service.send({ type: "invokeaction.moveContinuously" } as any);
       return undefined;
     }
   });
@@ -1115,17 +1080,11 @@ servient.start().then(async (WoT) => {
         "_wotwrapper._wotMachinewrapper.servos.panServo.panningContinuously",
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltIdle",
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltingContinuously",
-      ].some(currentState.matches)
+      ].some((s) => currentState.matches(s))
     ) {
       throw new Error("invokeaction goHome is not accessible in current state");
     } else {
-      service.send({
-        type: "invokeaction.goHome",
-        // data: {
-        //   payload: await inputData.value(),
-        //   uriVariables: options?.uriVariables,
-        // },
-      } as any);
+      service.send({ type: "invokeaction.goHome" } as any);
       return undefined;
     }
   });
@@ -1135,19 +1094,13 @@ servient.start().then(async (WoT) => {
       ![
         "_wotwrapper._wotMachinewrapper.servos.panServo.panningContinuously",
         "_wotwrapper._wotMachinewrapper.servos.tiltServo.tiltingContinuously",
-      ].some(currentState.matches)
+      ].some((s) => currentState.matches(s))
     ) {
       throw new Error(
-        "invokeaction stopMovement is not accessible in current state"
+        "invokeaction stopMovement is not accessible in current state",
       );
     } else {
-      service.send({
-        type: "invokeaction.stopMovement",
-        // data: {
-        //   payload: await inputData.value(),
-        //   uriVariables: options?.uriVariables,
-        // },
-      } as any);
+      service.send({ type: "invokeaction.stopMovement" } as any);
       return undefined;
     }
   });
@@ -1160,26 +1113,32 @@ servient.start().then(async (WoT) => {
 
   /*================================================= On Transition ===============================================*/
 
-  let lastState, lastContext;
-  service.onTransition((state) => {
-    console.log(`${td.title}:`);
-    console.log(`Recieved Event: ${JSON.stringify(state.event)}`);
-    console.log(`Current State: ${JSON.stringify(state.value)}`);
+  let lastState, lastContext: { [x: string]: any } | undefined;
+  service.onTransition(
+    (state: {
+      event: any;
+      value: any;
+      context: { [x: string]: any } | undefined;
+    }) => {
+      console.log(`${td.title}:`);
+      console.log(`Recieved Event: ${JSON.stringify(state.event)}`);
+      console.log(`Current State: ${JSON.stringify(state.value)}`);
 
-    if (
-      lastContext !== undefined &&
-      lastContext["panPosition"] !== state.context["panPosition"]
-    )
-      thing.emitPropertyChange("panPosition");
-    if (
-      lastContext !== undefined &&
-      lastContext["tiltPosition"] !== state.context["tiltPosition"]
-    )
-      thing.emitPropertyChange("tiltPosition");
+      if (
+        lastContext !== undefined &&
+        lastContext["panPosition"] !== state.context["panPosition"]
+      )
+        thing.emitPropertyChange("panPosition");
+      if (
+        lastContext !== undefined &&
+        lastContext["tiltPosition"] !== state.context["tiltPosition"]
+      )
+        thing.emitPropertyChange("tiltPosition");
 
-    lastState = state;
-    lastContext = state.context;
-  });
+      lastState = state;
+      lastContext = state.context;
+    },
+  );
 
   //Start State Machine and Server
   service.start();

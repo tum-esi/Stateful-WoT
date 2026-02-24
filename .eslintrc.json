@@ -5,7 +5,8 @@
     },
     "extends": [
         "eslint:recommended",
-        "standard-with-typescript"
+        "standard-with-typescript",
+        "prettier"
     ],
     "overrides": [],
     "parserOptions": {
